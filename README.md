@@ -22,10 +22,25 @@ Every shadow on the web is hand-tuned, and none of them agree. Heliograph puts a
 ## Install
 
 ```sh
-npm i github:jihoo12/heliograph
+npm i @jihoo12/heliograph
 ```
 
-Or copy `dist/heliograph.min.js` and `dist/heliograph.css` into your project. There is also an IIFE build (`dist/heliograph.iife.js`) that exposes `window.Heliograph`.
+```js
+import { createScene } from '@jihoo12/heliograph';
+import '@jihoo12/heliograph/css'; // with a bundler that handles CSS
+```
+
+No build step? Use a CDN:
+
+```html
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@jihoo12/heliograph@0.1.0/dist/heliograph.min.css">
+<script type="module">
+  import { createScene } from 'https://cdn.jsdelivr.net/npm/@jihoo12/heliograph@0.1.0/+esm';
+  createScene();
+</script>
+```
+
+There is also an IIFE build (`dist/heliograph.iife.js`) that exposes `window.Heliograph`.
 
 ## Quick start
 
@@ -39,7 +54,7 @@ Or copy `dist/heliograph.min.js` and `dist/heliograph.css` into your project. Th
 <div data-hg="lamp"></div> <!-- optional glow that sits at the light -->
 
 <script type="module">
-  import { createScene } from 'heliograph';
+  import { createScene } from '@jihoo12/heliograph';
   const scene = createScene({ mode: 'pointer' });
 </script>
 ```

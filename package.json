@@ -1,5 +1,5 @@
 {
-  "name": "heliograph",
+  "name": "@jihoo12/heliograph",
   "version": "0.1.0",
   "description": "One physically-based light for your whole web page: consistent shadows, specular highlights and rim light — driven by the cursor or the real sun.",
   "type": "module",
@@ -20,7 +20,8 @@
   "scripts": {
     "test": "node --test test/*.test.js",
     "build": "sh scripts/build.sh",
-    "dev": "sh scripts/build.sh && python3 -m http.server -d docs 8080"
+    "dev": "sh scripts/build.sh && python3 -m http.server -d docs 8080",
+    "prepublishOnly": "npm test && sh scripts/build.sh"
   },
   "keywords": [
     "css",
@@ -34,5 +35,19 @@
   ],
   "license": "MIT",
   "author": "jihoo12",
-  "types": "./src/index.d.ts"
+  "types": "./src/index.d.ts",
+  "sideEffects": [
+    "*.css"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jihoo12/heliograph.git"
+  },
+  "homepage": "https://jihoo12.github.io/heliograph/",
+  "bugs": {
+    "url": "https://github.com/jihoo12/heliograph/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }
