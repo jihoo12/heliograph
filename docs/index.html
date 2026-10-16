@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heliograph — one light for the whole page</title>
+<meta name="description" content="A tiny library that lights your web page with a single physical light: consistent shadows, specular highlights and rim light, driven by the cursor or the real sun.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="lib/heliograph.css">
+<style>
+  :root {
+    --n: var(--hg-night, 0);
+    --paper: color-mix(in oklab, #eee8dd, #090c17 calc(var(--n) * 100%));
+    --card: color-mix(in oklab, #fbf8f2, #151a2c calc(var(--n) * 100%));
+    --card-2: color-mix(in oklab, #f5f0e6, #1b2136 calc(var(--n) * 100%));
+    --ink: color-mix(in oklab, #1d1a16, #e9e7f2 calc(var(--n) * 100%));
+    --muted: color-mix(in oklab, #6d655a, #9a9cb5 calc(var(--n) * 100%));
+    --line: color-mix(in oklab, #d9d0c1, #2a3150 calc(var(--n) * 100%));
+    --accent: color-mix(in oklab, #d4572a, #f0a868 calc(var(--n) * 100%));
+    --serif: "Instrument Serif", ui-serif, Georgia, serif;
+    --sans: Inter, ui-sans-serif, system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--paper); color-scheme: light dark; }
+  body {
+    margin: 0;
+    font: 16px/1.6 var(--sans);
+    color: var(--ink);
+    background: var(--paper);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; text-decoration-color: color-mix(in oklab, var(--accent), transparent 40%); text-underline-offset: 3px; }
+  .wrap { width: min(1120px, 100% - 32px); margin-inline: auto; position: relative; z-index: 1; }
+
+  /* ---------- hero ---------- */
+  .hero {
+    min-height: 100svh;
+    display: grid;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    padding: 96px 0 140px;
+  }
+  .hero::before {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg,
+      rgb(var(--hg-sky-top) / calc(0.10 + var(--n) * 0.5)) 0%,
+      rgb(var(--hg-sky-bottom) / calc(0.22 + var(--n) * 0.2)) 70%,
+      transparent 100%);
+  }
+  .hero-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; align-items: center; }
+  .eyebrow {
+    font: 500 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+    display: inline-flex; gap: 10px; align-items: center;
+  }
+  .eyebrow i { width: 8px; height: 8px; border-radius: 50%; background: rgb(var(--hg-light)); box-shadow: 0 0 12px rgb(var(--hg-light)); }
+  h1 {
+    font: 400 clamp(64px, 11vw, 148px)/0.9 var(--serif);
+    letter-spacing: -0.035em;
+    margin: 22px 0 18px;
+  }
+  h1 em { font-style: italic; color: var(--accent); }
+  .lede { font-size: clamp(17px, 2vw, 20px); color: var(--muted); max-width: 30em; margin: 0 0 30px; }
+  .lede b { color: var(--ink); font-weight: 500; }
+  .cta { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn {
+    font: 500 15px/1 var(--sans); color: var(--ink); background: var(--card);
+    border: 0; border-radius: 999px; padding: 15px 22px; cursor: pointer; text-decoration: none;
+    display: inline-flex; gap: 8px; align-items: center;
+  }
+  .btn.primary { background: var(--ink); color: var(--paper); }
+  .install {
+    font: 13px/1 var(--mono); color: var(--muted); margin-top: 22px;
+  }
+
+  /* the elevation ladder */
+  .stage { position: relative; height: 460px; }
+  .tile {
+    position: absolute; border-radius: 22px; background: var(--card);
+    display: grid; place-items: end start; padding: 16px 18px;
+    font: 500 12px/1 var(--mono); color: var(--muted); cursor: default;
+    user-select: none;
+  }
+  .tile b { display: block; font: 400 38px/1 var(--serif); color: var(--ink); margin-bottom: 8px; letter-spacing: -.02em; }
+  .t1 { width: 46%; height: 42%; left: 2%; top: 4%; }
+  .t2 { width: 40%; height: 36%; left: 54%; top: 0; }
+  .t3 { width: 52%; height: 40%; left: 10%; top: 54%; background: var(--card-2); }
+  .t4 { width: 30%; aspect-ratio: 1; left: 66%; top: 44%; border-radius: 50%; place-items: center; text-align: center; }
+  .orb-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); display: inline-block; margin-right: 6px; }
+
+  /* ---------- sections ---------- */
+  section { padding: 110px 0; position: relative; }
+  .sec-head { display: grid; grid-template-columns: 1fr 1.3fr; gap: 40px; align-items: end; margin-bottom: 48px; }
+  h2 { font: 400 clamp(40px, 6vw, 72px)/0.95 var(--serif); letter-spacing: -0.03em; margin: 12px 0 0; }
+  h2 em { font-style: italic; color: var(--accent); }
+  .sec-head p { color: var(--muted); margin: 0; font-size: 17px; }
+  h3 { font: 600 17px/1.3 var(--sans); margin: 0 0 6px; }
+
+  .materials { display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; }
+  .mat {
+    aspect-ratio: 3 / 4; border-radius: 26px; padding: 20px; background: var(--card);
+    display: flex; flex-direction: column; justify-content: space-between; cursor: pointer;
+  }
+  .mat span { font: 12px/1 var(--mono); color: var(--muted); }
+  .mat strong { font: 400 34px/1 var(--serif); }
+  .mat[data-hg-material="gloss"] { background: color-mix(in oklab, #1e2a52, var(--card) 15%); color: #f4f1ff; }
+  .mat[data-hg-material="gloss"] span { color: #aab2d8; }
+  .mat[data-hg-material="metal"] { background: linear-gradient(160deg, #bfc3c9, #8a9099); color: #1a1c20; }
+  .mat[data-hg-material="metal"] span { color: #3a3e45; }
+  .glass-backdrop { position: relative; border-radius: 30px; padding: 20px; }
+  .mat[data-hg-material="glass"] { color: var(--ink); background: color-mix(in oklab, var(--card), transparent 70%); }
+  .blob { position: absolute; border-radius: 50%; filter: blur(2px); z-index: 0; }
+
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .feat { background: var(--card); border-radius: 22px; padding: 26px; }
+  .feat p { margin: 0; color: var(--muted); font-size: 15px; }
+  .feat .num { font: 400 46px/1 var(--serif); color: var(--accent); display: block; margin-bottom: 18px; }
+
+  .code {
+    background: color-mix(in oklab, #14161f, #0b0d16 calc(var(--n) * 100%));
+    color: #d7d9e4; border-radius: 22px; padding: 26px 28px; overflow-x: auto;
+    font: 13.5px/1.75 var(--mono);
+  }
+  .code pre { margin: 0; }
+  .c-k { color: #f0a868; } .c-s { color: #9fd49a; } .c-c { color: #6c7290; } .c-a { color: #8fb8ff; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .tabs span { font: 12px/1 var(--mono); padding: 7px 10px; border-radius: 8px; color: #8e93ad; background: rgb(255 255 255 / .05); }
+
+  .formula {
+    background: var(--card); border-radius: 22px; padding: 30px; display: grid; gap: 18px;
+  }
+  .formula .eq { font: italic 400 clamp(26px, 3.4vw, 38px)/1.2 var(--serif); }
+  .formula p { margin: 0; color: var(--muted); font-size: 15px; }
+  .diagram { width: 100%; height: auto; display: block; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  th, td { text-align: left; padding: 13px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  td code, p code, li code { font: 13px var(--mono); background: color-mix(in oklab, var(--line), transparent 40%); padding: 2px 6px; border-radius: 6px; }
+  .table-card { background: var(--card); border-radius: 22px; padding: 10px 14px; overflow-x: auto; }
+
+  footer { padding: 60px 0 150px; color: var(--muted); font-size: 14px; }
+  footer .wrap { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 28px; }
+
+  /* ---------- dock ---------- */
+  .dock {
+    position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+    z-index: 10; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
+    padding: 8px; border-radius: 22px; max-width: calc(100% - 32px);
+    background: color-mix(in oklab, var(--card), transparent 30%);
+    color: var(--ink);
+  }
+  .seg { display: flex; gap: 2px; background: color-mix(in oklab, var(--line), transparent 50%); border-radius: 15px; padding: 3px; }
+  .seg button {
+    font: 500 13px/1 var(--sans); color: var(--muted); background: transparent; border: 0; border-radius: 12px;
+    padding: 10px 14px; cursor: pointer;
+  }
+  .seg button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgb(var(--hg-shadow-rgb) / .25); }
+  .ctrl { display: none; align-items: center; gap: 10px; padding: 0 8px; font: 12px/1 var(--mono); color: var(--muted); }
+  .dock[data-mode="sun"] .ctrl.sun, .dock[data-mode="pointer"] .ctrl.pt, .dock[data-mode="orbit"] .ctrl.pt { display: flex; }
+  .ctrl output { color: var(--ink); min-width: 13ch; white-space: nowrap; }
+  .icon-btn {
+    width: 34px; height: 34px; border-radius: 11px; border: 0; cursor: pointer;
+    background: var(--card); color: var(--ink); display: grid; place-items: center;
+  }
+  input[type=range] { accent-color: var(--accent); width: 150px; }
+
+  @media (max-width: 900px) {
+    .hero-grid, .sec-head, .split { grid-template-columns: 1fr; }
+    .stage { height: 360px; }
+    .materials { grid-template-columns: repeat(2, 1fr); }
+    .features { grid-template-columns: 1fr; }
+    .hero { padding-top: 64px; }
+    input[type=range] { width: 110px; }
+  }
+  @media (max-width: 520px) {
+    .ctrl output { min-width: 0; }
+    .seg button { padding: 9px 10px; }
+  }
+</style>
+</head>
+<body>
+<div data-hg="lamp" aria-hidden="true"></div>
+
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow"><i></i>heliograph · v0.1 · 5&nbsp;kB gzipped</span>
+      <h1 data-hg="text" data-hg-z="5">One light<br>for the <em>whole</em> page.</h1>
+      <p class="lede">Every shadow on the web is hand-tuned and none of them agree. Heliograph puts <b>a single physical light</b> above your page, then derives every shadow, highlight and rim from it — following your cursor, or <b>the real sun where you are</b>.</p>
+      <div class="cta">
+        <a class="btn primary" data-hg="surface" data-hg-z="6" data-hg-z-hover="14" href="#start">Get started</a>
+        <button class="btn" data-hg="surface" data-hg-z="3" data-hg-z-hover="10" id="try-sun">☀︎ Light it with the sun</button>
+      </div>
+      <p class="install">npm i github:jihoo12/heliograph</p>
+    </div>
+    <div class="stage" aria-label="Tiles floating at different heights">
+      <div class="tile t1" data-hg="surface" data-hg-z="4" data-hg-z-hover="12"><div><b>z 4</b>resting card</div></div>
+      <div class="tile t2" data-hg="surface" data-hg-z="16" data-hg-z-hover="28"><div><b>z 16</b>popover</div></div>
+      <div class="tile t3" data-hg="surface" data-hg-z="9" data-hg-z-hover="20" data-hg-material="gloss" style="background:var(--card-2)"><div><b>z 9</b>gloss · hover me</div></div>
+      <div class="tile t4" data-hg="surface" data-hg-z="36" data-hg-z-hover="52" data-hg-material="satin"><div><b>z 36</b><span class="orb-dot"></span>floating</div></div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section id="materials">
+    <div class="wrap">
+      <div class="sec-head">
+        <div><span class="eyebrow">01 · materials</span><h2>Same light,<br><em>different</em> stuff.</h2></div>
+        <p>Materials only change how a surface answers the light — sharpness of the hotspot, brightness of the rim, how much colour bleeds in. Shadows stay consistent across all of them, because they come from the same source. Hover to lift, press to push down.</p>
+      </div>
+      <div class="glass-backdrop">
+        <div class="blob" style="width:220px;height:220px;left:42%;top:-30px;background:radial-gradient(circle at 30% 30%,#ff9a6b,#d4572a)"></div>
+        <div class="blob" style="width:160px;height:160px;left:52%;bottom:-20px;background:radial-gradient(circle at 30% 30%,#8fb8ff,#3a5bd9)"></div>
+        <div class="materials" style="position:relative">
+          <div class="mat" data-hg="surface" data-hg-z="6" data-hg-z-hover="22" data-hg-material="matte"><span>01</span><strong>Matte</strong></div>
+          <div class="mat" data-hg="surface" data-hg-z="6" data-hg-z-hover="22" data-hg-material="satin"><span>02</span><strong>Satin</strong></div>
+          <div class="mat" data-hg="surface" data-hg-z="6" data-hg-z-hover="22" data-hg-material="glass"><span>03</span><strong>Glass</strong></div>
+          <div class="mat" data-hg="surface" data-hg-z="6" data-hg-z-hover="22" data-hg-material="gloss"><span>04</span><strong>Gloss</strong></div>
+          <div class="mat" data-hg="surface" data-hg-z="6" data-hg-z-hover="22" data-hg-material="metal"><span>05</span><strong>Metal</strong></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="sun">
+    <div class="wrap">
+      <div class="sec-head">
+        <div><span class="eyebrow">02 · daylight</span><h2>Your site<br>has a <em>time of day.</em></h2></div>
+        <p>In <code>sun</code> mode Heliograph computes the solar altitude and azimuth for the visitor's location — guessed from the time zone, no permission prompt. Long amber shadows at 7&nbsp;am, short crisp ones at noon, violet dusk, and a cool moon after dark. Try the slider in the dock.</p>
+      </div>
+      <div class="features">
+        <div class="feat" data-hg="surface" data-hg-z="5" data-hg-z-hover="14"><span class="num">∠</span><h3>Real projection</h3><p>Shadows are cast with similar triangles, not guessed. Taller elements throw longer, softer shadows, and the direction changes across the screen with a point light.</p></div>
+        <div class="feat" data-hg="surface" data-hg-z="5" data-hg-z-hover="14"><span class="num">K</span><h3>Colour temperature</h3><p>Light colour comes from black-body Kelvin. Shadows are tinted by the sky, not black: blue at noon, violet at sunset, the way painters always did it.</p></div>
+        <div class="feat" data-hg="surface" data-hg-z="5" data-hg-z-hover="14"><span class="num">⌁</span><h3>Cheap to run</h3><p>One <code>requestAnimationFrame</code> loop that sleeps when nothing moves, batched layout reads, off-screen elements skipped, and only changed variables written.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="start">
+    <div class="wrap">
+      <div class="sec-head">
+        <div><span class="eyebrow">03 · quick start</span><h2>Two attributes.<br><em>That's it.</em></h2></div>
+        <p>Mark surfaces with <code>data-hg="surface"</code> and give them a height in pixels. Heliograph writes CSS variables; the bundled stylesheet turns them into shadows, highlights and rims — or use the variables yourself.</p>
+      </div>
+      <div class="split">
+        <div class="code" data-hg="surface" data-hg-z="10" data-hg-material="satin"><div class="tabs"><span>index.html</span></div><pre><span class="c-k">&lt;link</span> <span class="c-a">rel</span>=<span class="c-s">"stylesheet"</span> <span class="c-a">href</span>=<span class="c-s">"heliograph.css"</span><span class="c-k">&gt;</span>
+
+<span class="c-k">&lt;div</span> <span class="c-a">data-hg</span>=<span class="c-s">"surface"</span>
+     <span class="c-a">data-hg-z</span>=<span class="c-s">"8"</span>
+     <span class="c-a">data-hg-z-hover</span>=<span class="c-s">"20"</span>
+     <span class="c-a">data-hg-material</span>=<span class="c-s">"glass"</span><span class="c-k">&gt;</span>
+  A card lit like it's real.
+<span class="c-k">&lt;/div&gt;</span>
+
+<span class="c-k">&lt;h1</span> <span class="c-a">data-hg</span>=<span class="c-s">"text"</span><span class="c-k">&gt;</span>Shadowed type<span class="c-k">&lt;/h1&gt;</span>
+<span class="c-k">&lt;div</span> <span class="c-a">data-hg</span>=<span class="c-s">"lamp"</span><span class="c-k">&gt;&lt;/div&gt;</span> <span class="c-c">&lt;!-- optional glow --&gt;</span></pre></div>
+        <div class="code" data-hg="surface" data-hg-z="10" data-hg-material="satin"><div class="tabs"><span>main.js</span></div><pre><span class="c-k">import</span> { createScene } <span class="c-k">from</span> <span class="c-s">'heliograph'</span>;
+
+<span class="c-k">const</span> scene = createScene({
+  mode: <span class="c-s">'pointer'</span>,     <span class="c-c">// or 'sun' | 'orbit' | 'fixed'</span>
+  light: { height: <span class="c-a">700</span>, color: <span class="c-a">5600</span> },
+});
+
+<span class="c-c">// Let the real sun drive it — a day per minute</span>
+scene.set({ mode: <span class="c-s">'sun'</span>, sun: { speed: <span class="c-a">1440</span> } });
+
+<span class="c-c">// Or pin it to golden hour</span>
+scene.setTime(<span class="c-a">18.5</span>);
+
+<span class="c-c">// Drive your own canvas / WebGL from the same light</span>
+scene.on(<span class="c-s">'frame'</span>, (light) =&gt; draw(light));</pre></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="wrap">
+      <div class="sec-head">
+        <div><span class="eyebrow">04 · how it works</span><h2>A light, a table,<br><em>similar triangles.</em></h2></div>
+        <p>Your page is a table seen from above. Each surface hovers <i>z</i> pixels over it. A light sits at height <i>h</i>. Where its rays clip the surface's edge and land on the table is where the shadow goes — the same rule for every element, so they all agree.</p>
+      </div>
+      <div class="split">
+        <div class="formula" data-hg="surface" data-hg-z="6">
+          <svg class="diagram" viewBox="0 0 520 260" role="img" aria-label="A light at height h casting a shadow from a card at height z">
+            <line x1="20" y1="230" x2="500" y2="230" stroke="currentColor" stroke-opacity=".35"/>
+            <circle cx="90" cy="30" r="13" fill="rgb(var(--hg-light))" stroke="var(--accent)"/>
+            <line x1="90" y1="44" x2="90" y2="230" stroke="currentColor" stroke-opacity=".3" stroke-dasharray="3 5"/>
+            <text x="70" y="140" font-family="Instrument Serif" font-style="italic" font-size="22" fill="currentColor" text-anchor="end">h</text>
+            <rect x="230" y="160" width="120" height="10" rx="3" fill="var(--accent)"/>
+            <line x1="350" y1="170" x2="350" y2="230" stroke="currentColor" stroke-opacity=".3" stroke-dasharray="3 5"/>
+            <text x="362" y="206" font-family="Instrument Serif" font-style="italic" font-size="22" fill="currentColor">z</text>
+            <line x1="90" y1="30" x2="430" y2="230" stroke="var(--accent)" stroke-opacity=".7"/>
+            <rect x="262" y="226" width="168" height="8" rx="4" fill="currentColor" fill-opacity=".25"/>
+            <text x="440" y="220" font-family="JetBrains Mono" font-size="12" fill="currentColor" fill-opacity=".6">shadow</text>
+          </svg>
+          <div class="eq">offset = (C − L) · z ⁄ (h − z)</div>
+          <p><b>C</b> is the element's centre, <b>L</b> the light's position on screen. For the sun, <i>h</i> → ∞ and the offset becomes <i>z</i> · cot(altitude) along the azimuth. Blur grows with <i>z</i> to fake the penumbra of an area light; four layers plus sky occlusion keep it soft.</p>
+        </div>
+        <div class="formula" data-hg="surface" data-hg-z="6">
+          <h3>What gets written</h3>
+          <p>Per element, every frame something changes:</p>
+          <div class="table-card" style="padding:0;background:transparent">
+            <table>
+              <tr><td><code>--hg-shadow</code></td><td>layered <code>box-shadow</code></td></tr>
+              <tr><td><code>--hg-text-shadow</code></td><td>for <code>data-hg="text"</code></td></tr>
+              <tr><td><code>--hg-lx</code> <code>--hg-ly</code></td><td>specular hotspot, local %</td></tr>
+              <tr><td><code>--hg-angle</code></td><td>direction to the light, CSS deg</td></tr>
+              <tr><td><code>--hg-spec</code> <code>--hg-facing</code></td><td>0–1 strengths</td></tr>
+            </table>
+          </div>
+          <p>And once on <code>&lt;html&gt;</code>: <code>--hg-light</code> (rgb triple), <code>--hg-intensity</code>, <code>--hg-sky-top</code>, <code>--hg-sky-bottom</code>, <code>--hg-shadow-rgb</code>, <code>--hg-night</code>, <code>--hg-light-x/y</code>. This page's whole day/night palette is built from <code>--hg-night</code>.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="api">
+    <div class="wrap">
+      <div class="sec-head">
+        <div><span class="eyebrow">05 · reference</span><h2>The <em>whole</em> API.</h2></div>
+        <p>Small on purpose. Everything else is CSS you already know.</p>
+      </div>
+      <div class="table-card" data-hg="surface" data-hg-z="4">
+        <table>
+          <tr><th>Attribute</th><th>Meaning</th></tr>
+          <tr><td><code>data-hg="surface"</code></td><td>Casts a shadow, gets a specular hotspot and rim light. Uses <code>::before</code>/<code>::after</code>.</td></tr>
+          <tr><td><code>data-hg="text"</code></td><td>Casts a <code>text-shadow</code>. Combine: <code>data-hg="surface text"</code>.</td></tr>
+          <tr><td><code>data-hg="lamp"</code> · <code>"sky"</code></td><td>A glow that sits at the light; a background painted with the current sky. CSS only.</td></tr>
+          <tr><td><code>data-hg-z</code> · <code>-z-hover</code> · <code>-z-active</code></td><td>Height in px at rest, hovered, pressed. Transitions are animated by the light loop.</td></tr>
+          <tr><td><code>data-hg-material</code></td><td><code>matte</code> · <code>satin</code> · <code>gloss</code> · <code>glass</code> · <code>metal</code></td></tr>
+          <tr><th>Option</th><th>Default</th></tr>
+          <tr><td><code>mode</code></td><td><code>'pointer'</code> · <code>'sun'</code> · <code>'orbit'</code> · <code>'fixed'</code></td></tr>
+          <tr><td><code>light</code></td><td><code>{ x: .5, y: .15, height: 700, color: 5600, intensity: 1 }</code></td></tr>
+          <tr><td><code>sun</code></td><td><code>{ date: null, lat: null, lon: null, speed: 0 }</code> — nulls mean now / guessed from time zone</td></tr>
+          <tr><td><code>shadow</code></td><td><code>{ strength: 1, softness: 1, color: null }</code> — null colour = tinted by sky</td></tr>
+          <tr><td><code>sky</code> · <code>idle</code> · <code>smoothing</code></td><td><code>35</code> · <code>'auto'</code> · <code>7</code></td></tr>
+          <tr><th>Method</th><th></th></tr>
+          <tr><td><code>set(opts)</code> · <code>setTime(date | hour)</code></td><td>Change anything live; jump the sun.</td></tr>
+          <tr><td><code>on('frame', fn)</code></td><td>Get the light state each frame to drive canvas/WebGL. Returns unsubscribe.</td></tr>
+          <tr><td><code>add(el)</code> · <code>remove(el)</code> · <code>refresh()</code> · <code>destroy()</code></td><td>New DOM is picked up automatically via <code>MutationObserver</code>.</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Heliograph — MIT. Respects <code>prefers-reduced-motion</code>; SSR-safe.</span>
+    <a href="https://github.com/jihoo12/heliograph">github.com/jihoo12/heliograph</a>
+  </div>
+</footer>
+
+<div class="dock" data-hg="surface" data-hg-z="18" data-hg-material="glass" data-mode="pointer" id="dock">
+  <div class="seg" role="group" aria-label="Light mode">
+    <button data-mode="pointer" aria-pressed="true">Cursor</button>
+    <button data-mode="sun" aria-pressed="false">Sun</button>
+    <button data-mode="orbit" aria-pressed="false">Orbit</button>
+  </div>
+  <div class="ctrl pt">
+    <label for="height">height</label>
+    <input id="height" type="range" min="220" max="1600" value="700">
+  </div>
+  <div class="ctrl sun">
+    <button class="icon-btn" id="play" aria-label="Play a day">▶</button>
+    <input id="hour" type="range" min="0" max="24" step="0.02" aria-label="Time of day">
+    <output id="readout">--:--</output>
+    <button class="icon-btn" id="locate" aria-label="Use my location" title="Use my location">⌖</button>
+  </div>
+</div>
+
+<script type="module">
+  import { createScene } from './lib/heliograph.min.js';
+
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const scene = createScene({ mode: 'pointer', sky: dark ? -14 : 30, light: { color: 5000, height: 700 } });
+  window.scene = scene;
+
+  const dock = document.getElementById('dock');
+  const hour = document.getElementById('hour');
+  const readout = document.getElementById('readout');
+  const play = document.getElementById('play');
+  let playing = false;
+
+  function setMode(mode) {
+    dock.dataset.mode = mode;
+    dock.querySelectorAll('.seg button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.mode === mode));
+    if (mode === 'sun') {
+      scene.set({ mode, sun: { speed: playing ? 3600 : 0 } });
+      if (!playing) scene.setTime(new Date());
+    } else {
+      setPlaying(false);
+      scene.set({ mode });
+    }
+  }
+  function setPlaying(on) {
+    playing = on;
+    play.textContent = on ? '❚❚' : '▶';
+    play.setAttribute('aria-label', on ? 'Pause' : 'Play a day');
+    if (dock.dataset.mode === 'sun') scene.set({ sun: { speed: on ? 3600 : 0 } });
+  }
+
+  dock.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+  document.getElementById('try-sun').addEventListener('click', () => { setMode('sun'); setPlaying(true); });
+  play.addEventListener('click', () => setPlaying(!playing));
+  hour.addEventListener('input', () => { setPlaying(false); scene.setTime(+hour.value); });
+  document.getElementById('height').addEventListener('input', (e) => scene.set({ light: { height: +e.target.value } }));
+  document.getElementById('locate').addEventListener('click', () => {
+    navigator.geolocation?.getCurrentPosition((p) => scene.set({ sun: { lat: p.coords.latitude, lon: p.coords.longitude } }));
+  });
+
+  const phase = (a) => a < -6 ? 'night' : a < -0.5 ? 'blue hour' : a < 8 ? 'golden' : 'day';
+  scene.on('frame', (l) => {
+    if (l.kind !== 'dir' || !l.time) return;
+    const t = l.time;
+    const h = t.getHours() + t.getMinutes() / 60;
+    if (document.activeElement !== hour) hour.value = h.toFixed(2);
+    readout.textContent = `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')} · ${phase(l.sunAltitude)} ${Math.round(l.sunAltitude)}°`;
+  });
+
+  // Shareable state: ?mode=sun&hour=18.5
+  const q = new URLSearchParams(location.search);
+  if (q.has('mode')) setMode(q.get('mode'));
+  if (q.has('hour')) scene.setTime(+q.get('hour'));
+</script>
+</body>
+</html>
